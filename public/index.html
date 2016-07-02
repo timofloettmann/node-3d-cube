@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+  	<title>Interactive Cube</title>
+  	<style>
+  		body { margin: 0; padding: 0; }
+  		img {
+  			user-drag: none;
+			user-select: none;
+			-moz-user-select: none;
+			-webkit-user-drag: none;
+			-webkit-user-select: none;
+			-ms-user-select: none;
+  		}
+  	</style>
+  </head>
+  <body>
+  	<img id="mjpegImage" src="#">
+    <script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		var socket = io();
+		var connectionId = null;
+		var mjpegImage = document.getElementById('mjpegImage');
+
+		socket.on('connection_id', function(event) {
+			connectionId = event.connectionId;
+			mjpegImage.src = '/' + connectionId + '.mjpeg';
+
+			socket.emit('rotation_start', {
+            	connectionId: connectionId,
+            	targetRotationX: 0,
+            	targetRotationY: 0
+            });
+
+            socket.emit('rotation_end', {
+            	connectionId: connectionId
+            });
+		});
+
+		var isRotating = false;
+
+		var targetRotationX = 0, targetRotationOnMouseDownX = 0;
+		var targetRotationY = 0, targetRotationOnMouseDownY = 0;
+
+		var mouseX, mouseXOnMouseDown = 0;
+		var mouseY, mouseYOnMouseDown = 0;
+
+		var windowHalfX = window.innerWidth / 2;
+		var windowHalfY = window.innerHeight / 2;
+
+		document.addEventListener('mousedown', mouseDownHandler, false);
+		document.addEventListener('mousemove', mouseMoveHandler, false);
+		document.addEventListener('mouseup', rotateEndHandler, false);
+
+		document.addEventListener('touchstart', touchStartHandler, false);
+		document.addEventListener('touchmove', touchMoveHandler, false);
+		document.addEventListener('touchend', rotateEndHandler, false);
+
+		window.addEventListener('resize', function(e) {
+			windowHalfX = window.innerWidth / 2;
+			windowHalfY = window.innerHeight / 2;
+		}, false);
+
+		function mouseDownHandler(e) {
+			e.preventDefault();
+
+			isRotating = true;
+
+            mouseXOnMouseDown = event.clientX - windowHalfX;
+            targetRotationOnMouseDownX = targetRotationX;
+
+            mouseYOnMouseDown = event.clientY - windowHalfY;
+            targetRotationOnMouseDownY = targetRotationY;
+		};
+
+		function mouseMoveHandler(e) {
+			if (!isRotating) {
+				return;
+			}
+
+			e.preventDefault();
+
+			mouseX = event.clientX - windowHalfX;
+			targetRotationX = targetRotationOnMouseDownX + (mouseX - mouseXOnMouseDown) * 0.02;
+
+			mouseY = event.clientY - windowHalfY;
+			targetRotationY = targetRotationOnMouseDownY + (mouseY - mouseYOnMouseDown) * 0.02;
+
+            socket.emit('rotation_start', {
+            	connectionId: connectionId,
+            	targetRotationX: targetRotationX,
+            	targetRotationY: targetRotationY
+            });
+		};
+
+		function rotateEndHandler(e) {
+			isRotating = false;
+			e.preventDefault();
+			socket.emit('rotation_end', {
+            	connectionId: connectionId
+            });
+		};
+
+		function touchStartHandler(e) {
+			if (e.touches.length === 1) {
+				e.preventDefault();
+
+				mouseXOnMouseDown = event.touches[0].pageX - windowHalfX;
+				targetRotationOnMouseDownX = targetRotationX;
+
+				mouseYOnMouseDown = event.touches[0].pageY - windowHalfY;
+				targetRotationOnMouseDownY = targetRotationY;
+			}
+		};
+
+		function touchMoveHandler(e) {
+			if (e.touches.length === 1) {
+				e.preventDefault();
+
+				mouseX = event.touches[0].pageX - windowHalfX;
+				targetRotationX = targetRotationOnMouseDownX + (mouseX - mouseXOnMouseDown) * 0.05;
+
+				mouseY = event.touches[0].pageY - windowHalfY;
+				targetRotationY = targetRotationOnMouseDownY + (mouseY - mouseYOnMouseDown) * 0.05;
+
+				socket.emit('rotation_start', {
+	            	connectionId: connectionId,
+	            	targetRotationX: targetRotationX,
+	            	targetRotationY: targetRotationY
+	            });
+ 			}
+		}
+
+	</script>
+  </body>
+</html>
